@@ -24,25 +24,33 @@ from src.GENet import GE_resnet50 as Net
 from src.dataset import create_dataset
 
 parser = argparse.ArgumentParser(description='Image classification')
-parser.add_argument('--checkpoint_path', type=str, default=None, help='Checkpoint file path')
-parser.add_argument('--data_url', type=str, default=None, help='Dataset path')
-parser.add_argument('--train_url', type=str, default=None, help='Dataset path')
-parser.add_argument('--device_target', type=str, default='Ascend', choices=("Ascend", "GPU", "CPU"),
+parser.add_argument('--checkpoint_path', type=str, default="/home/pdluser/project/mindspore/checkpoints/GENet-60_15.ckpt", help='Checkpoint file path')
+parser.add_argument('--data_url', type=str, default="/home/pdluser/dataset/sub/test", help='Dataset path')
+parser.add_argument('--train_url', type=str, default="/home/pdluser/dataset/sub/train", help='Dataset path')
+parser.add_argument('--device_target', type=str, default='GPU', choices=("Ascend", "GPU", "CPU"),
                     help="Device target, support Ascend, GPU and CPU.")
 parser.add_argument('--extra', type=str, default="False",
                     help='whether to use Depth-wise conv to down sample')
 parser.add_argument('--mlp', type=str, default="True",
                     help='bottleneck . whether to use 1*1 conv')
 parser.add_argument('--is_modelarts', type=str, default="False", help='is train on modelarts')
+
+parser.add_argument('--batch-size', type=int, default=64, help='bs')
+
+parser.add_argument('--class-num', type=int, default=10, help='is train on modelarts')
+
+parser.add_argument('--use-label-smooth', type=bool, default=False, help='is train on modelarts')
+
+
 args_opt = parser.parse_args()
 
-if args_opt.extra.lower() == "false":
-    from src.config import config3 as config
-else:
-    if args_opt.mlp.lower() == "false":
-        from src.config import config2 as config
-    else:
-        from src.config import config1 as config
+# if args_opt.extra.lower() == "false":
+#     from src.config import config3 as config
+# else:
+#     if args_opt.mlp.lower() == "false":
+#         from src.config import config2 as config
+#     else:
+#         from src.config import config1 as config
 
 if args_opt.is_modelarts == "True":
     import moxing as mox
@@ -88,7 +96,7 @@ if __name__ == '__main__':
     # create dataset
     dataset = create_dataset(dataset_path=local_data_url,
                              do_train=False,
-                             batch_size=config.batch_size,
+                             batch_size=args_opt.batch_size,
                              target=target)
     step_size = dataset.get_dataset_size()
 
@@ -96,7 +104,7 @@ if __name__ == '__main__':
     mlp = trans_char_to_bool(args_opt.mlp)
     extra = trans_char_to_bool(args_opt.extra)
     # define net
-    net = Net(class_num=config.class_num, extra=extra, mlp=mlp)
+    net = Net(class_num=args_opt.class_num, extra=extra, mlp=mlp)
 
     # load checkpoint
     param_dict = load_checkpoint(local_pretrained_url)
@@ -105,12 +113,13 @@ if __name__ == '__main__':
 
     # define loss, model
 
-    if not config.use_label_smooth:
-        config.label_smooth_factor = 0.0
+    if not args_opt.use_label_smooth:
+        args_opt.label_smooth_factor = 0.0
+        
     loss = CrossEntropySmooth(sparse=True,
                               reduction='mean',
-                              smooth_factor=config.label_smooth_factor,
-                              num_classes=config.class_num)
+                              smooth_factor=args_opt.label_smooth_factor,
+                              num_classes=args_opt.class_num)
 
     # define model
     model = Model(net, loss_fn=loss, metrics={'top_1_accuracy', 'top_5_accuracy'})

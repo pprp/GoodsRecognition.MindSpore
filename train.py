@@ -25,7 +25,7 @@ from mindspore.context import ParallelMode
 from mindspore.nn.optim import Momentum
 from mindspore.parallel import set_algo_parameters
 from mindspore.train.callback import (CheckpointConfig, LossMonitor,
-                                      ModelCheckpoint, TimeMonitor,SummaryCollector)
+                                      ModelCheckpoint, TimeMonitor, SummaryCollector)
 from mindspore.train.loss_scale_manager import FixedLossScaleManager
 from mindspore.train.model import Model
 from mindspore.train.serialization import load_checkpoint, load_param_into_net
@@ -167,7 +167,7 @@ if __name__ == '__main__':
         loss_scale = FixedLossScaleManager(
             args.loss_scale, drop_overflow_update=False)
         model = Model(net, loss_fn=loss, optimizer=opt, loss_scale_manager=loss_scale,
-                      metrics={'acc'}, amp_level="O2", keep_batchnorm_fp32=False)
+                      metrics={'top_1_accuracy', 'top_5_accuracy'}, amp_level="O0", keep_batchnorm_fp32=False)
     else:
         raise ValueError("Unsupported device target.")
 
@@ -192,3 +192,9 @@ if __name__ == '__main__':
 
     if device_id == 0 and args.is_modelarts == "True":
         mox.file.copy_parallel(ckpt_save_dir, args.train_url)
+
+    val_dataset = create_dataset(dataset_path="/home/pdluser/dataset/sub/test", do_train=False,
+                                 repeat_num=1, batch_size=args.batch_size, target=target, distribute=run_distribute)
+
+    res = model.eval(val_dataset)
+    print("result:", res)
