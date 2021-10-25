@@ -6,12 +6,12 @@ def get_args():
     parser = argparse.ArgumentParser(description='Image classification')
 
     parser.add_argument('--config', type=str,
-                        default="./config/default.yaml", help='yaml files')
+                        default="./src/config/default.yaml", help='yaml files')
     parser.add_argument('--data_url', type=str,
-                        default='/home/pdluser/dataset/sub/train', help='Dataset path')
+                        default='/home/pdluser/dataset/all/train', help='Dataset path')
     parser.add_argument('--train_url', type=str, default=None,
                         help='Train output path')
-    parser.add_argument('--device_target', type=str, default='Ascend', choices=("Ascend", "GPU", "CPU"),
+    parser.add_argument('--device_target', type=str, default='GPU', choices=("Ascend", "GPU", "CPU"),
                         help="Device target, support Ascend, GPU and CPU.")
     parser.add_argument('--pre_trained', type=str, default=None,
                         help='Pretrained checkpoint path')
@@ -33,5 +33,7 @@ def get_args():
         opt = yaml.load(open(args.config), Loader=yaml.FullLoader)
         opt.update(vars(args))
         args = argparse.Namespace(**opt)
+    
+    print(args)
 
     return args

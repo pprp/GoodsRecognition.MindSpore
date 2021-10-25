@@ -24,7 +24,7 @@ from mindspore.communication.management import init, get_rank, get_group_size
 
 
 def create_dataset(dataset_path, do_train, repeat_num=1, batch_size=32,
-                   target="GPU", distribute=False):
+                   target="GPU", distribute=False, image_size=128):
     """
     create a train or eval imagenet2012 dataset for resnet50
 
@@ -55,7 +55,8 @@ def create_dataset(dataset_path, do_train, repeat_num=1, batch_size=32,
         data_set = ds.ImageFolderDataset(dataset_path, num_parallel_workers=2, shuffle=True,
                                          num_shards=device_num, shard_id=rank_id)
 
-    image_size = 224
+    image_size = image_size
+    
     mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]
     std = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 

@@ -1,10 +1,10 @@
 optimizer: "Momentum"
 class_num: 2390
-batch_size: 64
+batch_size: 128
 loss_scale: 1024
 momentum: 0.9
 weight_decay: 0.0005
-epoch_size: 200
+epoch_size: 120
 pretrain_epoch_size: 0
 save_checkpoint: True,
 save_checkpoint_epochs: 5
@@ -16,3 +16,4 @@ use_label_smooth: True
 label_smooth_factor: 0.1
 lr_init: 0.2
 lr_end: 0.0
+image_size: 64

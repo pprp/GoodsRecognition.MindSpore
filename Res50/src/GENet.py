@@ -188,7 +188,7 @@ class GENet(nn.Cell):
         self.extra = extra_params
 
         # initial stage
-        self.conv1 = _conv7x7(3, 64, stride=2)
+        self.conv1 = _conv7x7(3, 64, stride=1)
         self.bn1 = _bn(64)
         self.relu = P.ReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, pad_mode="same")

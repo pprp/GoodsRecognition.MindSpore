@@ -13,7 +13,6 @@
 # limitations under the License.
 # ============================================================================
 """train GENet."""
-import argparse
 import os
 
 import mindspore.common.initializer as weight_init
@@ -25,17 +24,19 @@ from mindspore.context import ParallelMode
 from mindspore.nn.optim import Momentum
 from mindspore.parallel import set_algo_parameters
 from mindspore.train.callback import (CheckpointConfig, LossMonitor,
-                                      ModelCheckpoint, TimeMonitor, SummaryCollector)
+                                      ModelCheckpoint, SummaryCollector,
+                                      TimeMonitor)
 from mindspore.train.loss_scale_manager import FixedLossScaleManager
 from mindspore.train.model import Model
 from mindspore.train.serialization import load_checkpoint, load_param_into_net
 
+from src.args import get_args
 from src.CrossEntropySmooth import CrossEntropySmooth
 from src.dataset import create_dataset
 from src.GENet import GE_resnet50 as net
 from src.lr_generator import get_lr
-from args import get_args
-from utils.utils import filter_checkpoint_parameter_by_list, trans_char_to_bool
+from src.resnet import resnet50
+from src.utils import filter_checkpoint_parameter_by_list, trans_char_to_bool
 
 set_seed(1)
 
@@ -97,13 +98,14 @@ if __name__ == '__main__':
 
     # create dataset
     dataset = create_dataset(dataset_path=local_train_data_url, do_train=True, repeat_num=1,
-                             batch_size=args.batch_size, target=target, distribute=run_distribute)
+                             batch_size=args.batch_size, target=target, distribute=run_distribute, image_size=args.image_size)
     step_size = dataset.get_dataset_size()
 
     # define net
     mlp = trans_char_to_bool(args.mlp)
     extra = trans_char_to_bool(args.extra)
-    net = net(class_num=args.class_num, extra=extra, mlp=mlp)
+    # net = net(class_num=args.class_num, extra=extra, mlp=mlp)
+    net = resnet50(class_num=args.class_num)
 
     # init weight
     if args.pre_trained:
@@ -193,8 +195,8 @@ if __name__ == '__main__':
     if device_id == 0 and args.is_modelarts == "True":
         mox.file.copy_parallel(ckpt_save_dir, args.train_url)
 
-    val_dataset = create_dataset(dataset_path="/home/pdluser/dataset/sub/test", do_train=False,
-                                 repeat_num=1, batch_size=args.batch_size, target=target, distribute=run_distribute)
+    val_dataset = create_dataset(dataset_path="/home/pdluser/dataset/all/test", do_train=False,
+                                 repeat_num=1, batch_size=args.batch_size, target=target, distribute=run_distribute, image_size=args.image_size)
 
     res = model.eval(val_dataset)
     print("result:", res)
