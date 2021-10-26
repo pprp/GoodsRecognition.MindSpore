@@ -39,7 +39,7 @@ from src.GENet import GE_resnet50 as net
 from src.install import install_pip
 from src.lr_generator import get_lr
 from src.resnet import resnet50
-from src.utils import filter_checkpoint_parameter_by_list, str2bool
+from src.utils import filter_checkpoint_parameter_by_list, str2bool, save_args
 
 warnings.filterwarnings('ignore')
 os.environ['GLOG_v'] = '3'
@@ -52,6 +52,7 @@ if __name__ == '__main__':
     print("=="*20)
     print(args)
     print("=="*20)
+
     if args.is_modelarts == "True":
         import moxing as mox
 
@@ -220,6 +221,7 @@ if __name__ == '__main__':
                 sink_size=dataset.get_dataset_size(), dataset_sink_mode=dataset_sink_mode)
 
     if device_id == 0 and args.is_modelarts == "True":
+        save_args(args, ckpt_save_dir)
         mox.file.copy_parallel(ckpt_save_dir, args.train_url)
 
     print('model evaluation start..............')

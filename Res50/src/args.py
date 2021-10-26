@@ -8,7 +8,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Image classification')
 
     parser.add_argument('--config', type=str,
-                        default="/src/config/default.yaml", help='yaml files')
+                        default="./src/config/default.yaml", help='yaml files')
     parser.add_argument('--data_url', type=str,
                         default='/pprpmindspore/RP2K/', help='Dataset path')
     parser.add_argument('--train_url', type=str, default=None,
