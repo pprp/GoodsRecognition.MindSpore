@@ -14,6 +14,8 @@
 # ============================================================================
 """train GENet."""
 import os
+import warnings
+from threading import local
 
 import mindspore.common.initializer as weight_init
 import mindspore.nn as nn
@@ -34,19 +36,27 @@ from src.args import get_args
 from src.CrossEntropySmooth import CrossEntropySmooth
 from src.dataset import create_dataset
 from src.GENet import GE_resnet50 as net
+from src.install import install_pip
 from src.lr_generator import get_lr
 from src.resnet import resnet50
-from src.utils import filter_checkpoint_parameter_by_list, trans_char_to_bool
+from src.utils import filter_checkpoint_parameter_by_list, str2bool
 
+warnings.filterwarnings('ignore')
+os.environ['GLOG_v'] = '3'
 set_seed(1)
 
 if __name__ == '__main__':
+    install_pip()
     args = get_args()
+
+    print("=="*20)
+    print(args)
+    print("=="*20)
     if args.is_modelarts == "True":
         import moxing as mox
 
-    device_id = 0  # int(os.getenv('DEVICE_ID'))
-    device_num = 1  # int(os.getenv("RANK_SIZE"))
+    device_id = int(os.getenv('DEVICE_ID'))
+    device_num = int(os.getenv("RANK_SIZE"))
 
     ckpt_save_dir = args.save_checkpoint_path
     local_train_data_url = args.data_url
@@ -59,21 +69,32 @@ if __name__ == '__main__':
         ckpt_save_dir = local_train_url
         mox.file.make_dirs(local_train_url)
         mox.file.make_dirs(local_summary_dir)
-        filename = "imagenet_original.tar.gz"
+        filename = "RP2K_rp2k_dataset.zip"
         # transfer dataset
         local_data_url = os.path.join(local_data_url, str(device_id))
         mox.file.make_dirs(local_data_url)
         local_zip_path = os.path.join(
             local_zipfolder_url, str(device_id), filename)
-        obs_zip_path = os.path.join(args.data_url, filename)
-        mox.file.copy(obs_zip_path, local_zip_path)
-        unzip_command = "tar -xvf %s -C %s" % (local_zip_path, local_data_url)
-        os.system(unzip_command)
-        local_train_data_url = os.path.join(local_data_url, "train")
-        # = os.path.join(
-        #    local_data_url, "imagenet_original", "train")
+        mox.file.make_dirs(os.path.join(local_zipfolder_url, str(device_id)))
 
-    target = "GPU"  # args.device_target
+        obs_zip_path = os.path.join(args.data_url, filename)
+
+        print('From Source dir: %s copy to %s' %
+              (obs_zip_path, local_zip_path))
+
+        mox.file.copy(obs_zip_path, local_zip_path)
+
+        print("Zip file starting................")
+
+        unzip_command = "unzip %s -d %s" % (local_zip_path, local_data_url)
+        os.system(unzip_command)
+
+        print("Zip file done.................")
+
+        local_train_data_url = os.path.join(local_data_url, "all", "train")
+        local_val_data_url = os.path.join(local_data_url, "all", "test")
+
+    target = args.device_target
     # if target != 'Ascend':
     #     raise ValueError("Unsupported device target.")
 
@@ -96,14 +117,16 @@ if __name__ == '__main__':
         context.set_auto_parallel_context(all_reduce_fusion_config=[85, 160])
         init()
 
+    print("create training dataset.......................")
+
     # create dataset
     dataset = create_dataset(dataset_path=local_train_data_url, do_train=True, repeat_num=1,
                              batch_size=args.batch_size, target=target, distribute=run_distribute, image_size=args.image_size)
     step_size = dataset.get_dataset_size()
 
     # define net
-    mlp = trans_char_to_bool(args.mlp)
-    extra = trans_char_to_bool(args.extra)
+    # mlp = str2bool(args.mlp)
+    # extra = str2bool(args.extra)
     # net = net(class_num=args.class_num, extra=extra, mlp=mlp)
     net = resnet50(class_num=args.class_num)
 
@@ -123,6 +146,7 @@ if __name__ == '__main__':
                                                              cell.weight.shape,
                                                              cell.weight.dtype))
 
+    print("scheduler configure................")
     # scheduler
     lr = get_lr(args.lr_init, args.lr_end,
                 args.epoch_size, step_size, args.decay_mode)
@@ -132,6 +156,7 @@ if __name__ == '__main__':
     # define opt
     decayed_params = []
     no_decayed_params = []
+
     for param in net.trainable_params():
         if 'beta' not in param.name and 'gamma' not in param.name and 'bias' not in param.name:
             decayed_params.append(param)
@@ -142,8 +167,11 @@ if __name__ == '__main__':
                     {'params': no_decayed_params},
                     {'order_params': net.trainable_params()}]
 
+    print("optimizer configure.................")
     opt = Momentum(group_params, lr, args.momentum,
                    loss_scale=args.loss_scale)
+
+    print("model and loss configure................")
 
     # define loss, model
     if target == "Ascend":
@@ -169,33 +197,33 @@ if __name__ == '__main__':
         loss_scale = FixedLossScaleManager(
             args.loss_scale, drop_overflow_update=False)
         model = Model(net, loss_fn=loss, optimizer=opt, loss_scale_manager=loss_scale,
-                      metrics={'top_1_accuracy', 'top_5_accuracy'}, amp_level="O0", keep_batchnorm_fp32=False)
+                      metrics={'top_1_accuracy', 'top_5_accuracy'}, amp_level="O2", keep_batchnorm_fp32=False)
     else:
         raise ValueError("Unsupported device target.")
 
+    print('callbacks configure............')
     # define callbacks
     time_cb = TimeMonitor(data_size=step_size)
     loss_cb = LossMonitor()
-    summary_cb = SummaryCollector('./summary')
-    rank_id = 0  # int(os.getenv("RANK_ID"))
-
-    cb = [time_cb, loss_cb, summary_cb]
-
+    rank_id = int(os.getenv("RANK_ID"))
+    cb = [time_cb, loss_cb]
     if rank_id == 0:
         config_ck = CheckpointConfig(save_checkpoint_steps=args.save_checkpoint_epochs*step_size,
                                      keep_checkpoint_max=args.keep_checkpoint_max)
         ckpt_cb = ModelCheckpoint(
-            prefix="GENet", directory=ckpt_save_dir, config=config_ck)
+            prefix="resnet50", directory=ckpt_save_dir, config=config_ck)
         cb += [ckpt_cb]
 
     dataset_sink_mode = target != "CPU"
+    print("model training start....................")
     model.train(args.epoch_size, dataset, callbacks=cb,
                 sink_size=dataset.get_dataset_size(), dataset_sink_mode=dataset_sink_mode)
 
     if device_id == 0 and args.is_modelarts == "True":
         mox.file.copy_parallel(ckpt_save_dir, args.train_url)
 
-    val_dataset = create_dataset(dataset_path="/home/pdluser/dataset/all/test", do_train=False,
+    print('model evaluation start..............')
+    val_dataset = create_dataset(dataset_path=local_val_data_url, do_train=False,
                                  repeat_num=1, batch_size=args.batch_size, target=target, distribute=run_distribute, image_size=args.image_size)
 
     res = model.eval(val_dataset)

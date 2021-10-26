@@ -13,7 +13,7 @@ def filter_checkpoint_parameter_by_list(origin_dict, param_filter):
                 break
 
 
-def trans_char_to_bool(str_):
+def str2bool(str_):
     """
     Args:
         str_: string
