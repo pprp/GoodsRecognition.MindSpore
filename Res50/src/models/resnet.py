@@ -73,7 +73,7 @@ class ResidualBlock(nn.Cell):
     Examples:
         >>> ResidualBlock(3, 256, stride=2)
     """
-    expansion = 4
+    expansion = 2
 
     def __init__(self,
                  in_channel,
@@ -104,7 +104,7 @@ class ResidualBlock(nn.Cell):
                                                         _bn(out_channel)])
         self.add = ops.Add()
 
-    def construct(self, x): # pylint: disable=missing-docstring
+    def construct(self, x):  # pylint: disable=missing-docstring
         identity = x
 
         out = self.conv1(x)
@@ -158,7 +158,8 @@ class ResNet(nn.Cell):
         super(ResNet, self).__init__()
 
         if not len(layer_nums) == len(in_channels) == len(out_channels) == 4:
-            raise ValueError("the length of layer_num, in_channels, out_channels list must be 4!")
+            raise ValueError(
+                "the length of layer_num, in_channels, out_channels list must be 4!")
 
         self.conv1 = _conv7x7(3, 64, stride=2)
         self.bn1 = _bn(64)
@@ -215,7 +216,7 @@ class ResNet(nn.Cell):
 
         return nn.SequentialCell(layers)
 
-    def construct(self, x): # pylint: disable=missing-docstring
+    def construct(self, x):  # pylint: disable=missing-docstring
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -233,7 +234,7 @@ class ResNet(nn.Cell):
         return out
 
 
-def resnet50(class_num=10):
+def resnet50(class_num=10, width=32):
     """
     Get ResNet50 neural network.
     Args:
@@ -243,15 +244,19 @@ def resnet50(class_num=10):
     Examples:
         >>> net = resnet50(10)
     """
+    multiplyer = [2, 8, 16, 32, 64]
+    inchannel_list = [width * item for item in multiplyer[:4]]
+    outchannel_list = [width * item for item in multiplyer[1:]]
+
     return ResNet(ResidualBlock,
-                  [3, 4, 6, 3],
-                  [64, 256, 512, 1024],
-                  [256, 512, 1024, 2048],
-                  [1, 2, 2, 2],
+                  [3, 4, 6, 3],  # layer number
+                  inchannel_list,  # inchannel
+                  outchannel_list,  # outchannel
+                  [1, 2, 2, 2],  # strides
                   class_num)
 
 
-def resnet101(class_num=1001):
+def resnet101(class_num=1001, width=32):
     """
     Get ResNet101 neural network.
     Args:
@@ -261,9 +266,13 @@ def resnet101(class_num=1001):
     Examples:
         >>> net = resnet101(1001)
     """
+    multiplyer = [2, 8, 16, 32, 64]
+    inchannel_list = [width * item for item in multiplyer[:4]]
+    outchannel_list = [width * item for item in multiplyer[1:]]
+    
     return ResNet(ResidualBlock,
                   [3, 4, 23, 3],
-                  [64, 256, 512, 1024],
-                  [256, 512, 1024, 2048],
+                  inchannel_list,  # inchannel
+                  outchannel_list,  # outchannel
                   [1, 2, 2, 2],
                   class_num)

@@ -23,7 +23,8 @@ def get_args():
                         help='bottleneck . whether to use 1*1 conv')
     parser.add_argument('--is_modelarts', type=str,
                         default="True", help='is train on modelarts')
-    parser.add_argument('--epoch_size', type=int, default=200, help='epoch size')
+    parser.add_argument('--epoch_size', type=int,
+                        default=200, help='epoch size')
 
     parser.add_argument('--batch_size', type=int,
                         default=512, help='batch size')
@@ -33,6 +34,8 @@ def get_args():
 
     parser.add_argument('--lr_init', type=float, default=0.4,
                         help='initial learning rate')
+    parser.add_argument('--model', type=str, default='resnet50',
+                        choices=['resnet50', 'resnet101'], help='model name')
 
     parser.add_argument('--decay_mode', type=str, default='linear',
                         choices=['linear', 'cosine'], help='learning rate decay mode')

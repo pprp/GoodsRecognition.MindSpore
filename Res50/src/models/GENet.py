@@ -19,7 +19,7 @@ import numpy as np
 import mindspore.nn as nn
 from mindspore.ops import operations as P
 from mindspore.common.tensor import Tensor
-from src.GEBlock import GEBlock
+from src.models.GEBlock import GEBlock
 
 def calculate_gain(nonlinearity, param=None):
     """calculate_gain"""
