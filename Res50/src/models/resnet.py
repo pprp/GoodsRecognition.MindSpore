@@ -234,7 +234,7 @@ class ResNet(nn.Cell):
         return out
 
 
-def resnet50(class_num=10, width=32):
+def resnet50(class_num=2390, width=32):
     """
     Get ResNet50 neural network.
     Args:
@@ -256,7 +256,7 @@ def resnet50(class_num=10, width=32):
                   class_num)
 
 
-def resnet101(class_num=1001, width=32):
+def resnet101(class_num=2390, width=32):
     """
     Get ResNet101 neural network.
     Args:
