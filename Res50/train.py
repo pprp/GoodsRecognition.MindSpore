@@ -35,10 +35,9 @@ from mindspore.train.serialization import load_checkpoint, load_param_into_net
 from src.args import get_args
 from src.CrossEntropySmooth import CrossEntropySmooth
 from src.dataset import create_dataset
-from src.GENet import GE_resnet50 as net
+from src.models import build_network
 from src.install import install_pip
 from src.lr_generator import get_lr
-from src.resnet import resnet50
 from src.utils import filter_checkpoint_parameter_by_list, str2bool, save_args
 
 warnings.filterwarnings('ignore')
@@ -129,7 +128,8 @@ if __name__ == '__main__':
     # mlp = str2bool(args.mlp)
     # extra = str2bool(args.extra)
     # net = net(class_num=args.class_num, extra=extra, mlp=mlp)
-    net = resnet50(class_num=args.class_num)
+    # resnet50(class_num=args.class_num)
+    net = build_network(args.model, args.width)
 
     # init weight
     if args.pre_trained:
@@ -212,7 +212,7 @@ if __name__ == '__main__':
         config_ck = CheckpointConfig(save_checkpoint_steps=args.save_checkpoint_epochs*step_size,
                                      keep_checkpoint_max=args.keep_checkpoint_max)
         ckpt_cb = ModelCheckpoint(
-            prefix="resnet50", directory=ckpt_save_dir, config=config_ck)
+            prefix=args.model, directory=ckpt_save_dir, config=config_ck)
         cb += [ckpt_cb]
 
     dataset_sink_mode = target != "CPU"

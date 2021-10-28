@@ -73,7 +73,7 @@ class ResidualBlock(nn.Cell):
     Examples:
         >>> ResidualBlock(3, 256, stride=2)
     """
-    expansion = 2
+    expansion = 4
 
     def __init__(self,
                  in_channel,

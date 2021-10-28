@@ -17,17 +17,17 @@ def get_args():
                         help="Device target, support Ascend, GPU and CPU.")
     parser.add_argument('--pre_trained', type=str, default=None,
                         help='Pretrained checkpoint path')
-    parser.add_argument('--extra', type=str, default="True",
-                        help='whether to use Depth-wise conv to down sample')
-    parser.add_argument('--mlp', type=str, default="True",
-                        help='bottleneck . whether to use 1*1 conv')
+    # parser.add_argument('--extra', type=str, default="True",
+    #                     help='whether to use Depth-wise conv to down sample')
+    # parser.add_argument('--mlp', type=str, default="True",
+    #                     help='bottleneck . whether to use 1*1 conv')
     parser.add_argument('--is_modelarts', type=str,
                         default="True", help='is train on modelarts')
     parser.add_argument('--epoch_size', type=int,
-                        default=200, help='epoch size')
+                        default=120, help='epoch size')
 
     parser.add_argument('--batch_size', type=int,
-                        default=512, help='batch size')
+                        default=1024, help='batch size')
 
     parser.add_argument('--image_size', type=int,
                         default=64, help='image size')
@@ -36,6 +36,8 @@ def get_args():
                         help='initial learning rate')
     parser.add_argument('--model', type=str, default='resnet50',
                         choices=['resnet50', 'resnet101'], help='model name')
+    parser.add_argument('--width', type=int, default=32,
+                        help='width of resnet')
 
     parser.add_argument('--decay_mode', type=str, default='linear',
                         choices=['linear', 'cosine'], help='learning rate decay mode')
