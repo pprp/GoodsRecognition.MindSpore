@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "./train.py", line 33, in <module>
+    from src.config import config
+  File "/media/niu/niu_d/dpj_workspace/MindsporeGoodsRecognition/mnasnet/src/config.py", line 18, in <module>
+    from easydict import EasyDict as ed
+ModuleNotFoundError: No module named 'easydict'

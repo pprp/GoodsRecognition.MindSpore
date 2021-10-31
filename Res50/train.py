@@ -40,23 +40,25 @@ from src.install import install_pip
 from src.lr_generator import get_lr
 from src.utils import filter_checkpoint_parameter_by_list, str2bool, save_args
 
+
 warnings.filterwarnings('ignore')
 os.environ['GLOG_v'] = '3'
 set_seed(1)
 
 if __name__ == '__main__':
-    install_pip()
+    # install_pip()
     args = get_args()
 
     print("=="*20)
     print(args)
     print("=="*20)
+    save_args(args, "./checkpoints")
 
     if args.is_modelarts == "True":
         import moxing as mox
 
-    device_id = int(os.getenv('DEVICE_ID'))
-    device_num = int(os.getenv("RANK_SIZE"))
+    device_id = 1#int(os.getenv('DEVICE_ID')) # 设置第几个gpu
+    device_num = 1#int(os.getenv("RANK_SIZE"))
 
     ckpt_save_dir = args.save_checkpoint_path
     local_train_data_url = args.data_url
@@ -93,6 +95,9 @@ if __name__ == '__main__':
 
         local_train_data_url = os.path.join(local_data_url, "all", "train")
         local_val_data_url = os.path.join(local_data_url, "all", "test")
+    else:
+        local_train_data_url = os.path.join(args.data_url, "train")
+        local_val_data_url = os.path.join(args.data_url, "test")
 
     target = args.device_target
     # if target != 'Ascend':
@@ -105,7 +110,7 @@ if __name__ == '__main__':
 
     # init context
     context.set_context(mode=context.GRAPH_MODE,
-                        device_target=target, save_graphs=False)
+                        device_target=target, save_graphs=False, device_id=device_id)
 
     if run_distribute:
         context.set_context(device_id=device_id,
@@ -206,7 +211,7 @@ if __name__ == '__main__':
     # define callbacks
     time_cb = TimeMonitor(data_size=step_size)
     loss_cb = LossMonitor()
-    rank_id = int(os.getenv("RANK_ID"))
+    rank_id = 0#int(os.getenv("RANK_ID"))
     cb = [time_cb, loss_cb]
     if rank_id == 0:
         config_ck = CheckpointConfig(save_checkpoint_steps=args.save_checkpoint_epochs*step_size,

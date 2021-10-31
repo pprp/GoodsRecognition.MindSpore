@@ -14,6 +14,6 @@ save_checkpoint_path: "checkpoints"
 hold_epochs: 0
 use_label_smooth: True
 label_smooth_factor: 0.1
-lr_init: 0.4
+lr_init: 0.0001
 lr_end: 0.0
-image_size: 64
+image_size: 128

@@ -107,3 +107,4 @@ mindspore/lite/test/do_test/
 
 # lite opencl compile file
 *.cl.inc
+*.log

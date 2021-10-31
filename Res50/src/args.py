@@ -10,10 +10,10 @@ def get_args():
     parser.add_argument('--config', type=str,
                         default="./src/config/default.yaml", help='yaml files')
     parser.add_argument('--data_url', type=str,
-                        default='/pprpmindspore/RP2K/', help='Dataset path')
-    parser.add_argument('--train_url', type=str, default=None,
+                        default='/media/niu/niu_g/data/all', help='Dataset path')
+    parser.add_argument('--train_url', type=str, default="./train_url",
                         help='Train output path')
-    parser.add_argument('--device_target', type=str, default='Ascend', choices=("Ascend", "GPU", "CPU"),
+    parser.add_argument('--device_target', type=str, default='GPU', choices=("Ascend", "GPU", "CPU"),
                         help="Device target, support Ascend, GPU and CPU.")
     parser.add_argument('--pre_trained', type=str, default=None,
                         help='Pretrained checkpoint path')
@@ -21,18 +21,20 @@ def get_args():
     #                     help='whether to use Depth-wise conv to down sample')
     # parser.add_argument('--mlp', type=str, default="True",
     #                     help='bottleneck . whether to use 1*1 conv')
+    parser.add_argument('--download_pip', type=bool,
+                        default=False, help='using pip to download packages')
     parser.add_argument('--is_modelarts', type=str,
-                        default="True", help='is train on modelarts')
+                        default="False", help='is train on modelarts')
     parser.add_argument('--epoch_size', type=int,
                         default=120, help='epoch size')
 
     parser.add_argument('--batch_size', type=int,
-                        default=1024, help='batch size')
+                        default=512, help='batch size')
 
     parser.add_argument('--image_size', type=int,
-                        default=64, help='image size')
+                        default=128, help='image size')
 
-    parser.add_argument('--lr_init', type=float, default=0.4,
+    parser.add_argument('--lr_init', type=float, default=0.01,
                         help='initial learning rate')
     parser.add_argument('--model', type=str, default='resnet50',
                         choices=['resnet50', 'resnet101'], help='model name')
@@ -54,7 +56,5 @@ def get_args():
         opt = yaml.load(open(args.config), Loader=yaml.FullLoader)
         opt.update(vars(args))
         args = argparse.Namespace(**opt)
-
-    print(args)
 
     return args
