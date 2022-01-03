@@ -57,7 +57,8 @@ class SEBlock(nn.Cell):
         self.cast = P.Cast()
 
     def construct(self, x):
-        b, c = self.shape(x)
+        # b, c = self.shape(x)
+        b,c,_,_ = x.shape
         y = self.avg_pool(x)
 
         y = self.reshape(y, (b, c))
@@ -95,7 +96,6 @@ class GroupConv(nn.Cell):
                                         padding=pad, pad_mode=pad_mode, group=1))
 
     def construct(self, x):
-        # print("group conv input x : ", x.shape)
         features = self.op_split(x)
         outputs = ()
         for i in range(self.groups):

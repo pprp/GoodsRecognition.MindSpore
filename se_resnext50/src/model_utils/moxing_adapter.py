@@ -18,7 +18,7 @@
 import os
 import functools
 from mindspore import context
-from src.model_utils.config import config
+from src.config import config
 
 _global_sync_count = 0
 

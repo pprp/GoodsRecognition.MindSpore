@@ -25,7 +25,6 @@ from mindspore.train.loss_scale_manager import (
     FixedLossScaleManager,
 )
 from mindspore.train.model import Model
-import mindspore.nn as nn
 
 from src.config import config
 from src.models import build_network
@@ -34,19 +33,19 @@ from src.py_dataset import classification_dataset
 # from src.image_classification import get_network
 from src.model_utils.moxing_adapter import moxing_wrapper
 from src.utils.callback import EvalCallBack
-from src.losses import build_loss
+from src.utils.crossentropy import CrossEntropy
 from src.utils.lr_generator import get_lr
-from src.utils.optimizer_param import get_param_groups
-from src.utils.utils import set_parameters, ProgressMonitor, modelarts_process
+from src.utils.optimizer_param import get_param_groups, get_finetune_param_groups
+from src.utils.utils import set_parameters, ProgressMonitor
 from src.utils.var_init import load_pretrain_model
-from src.utils.controller import build_lr_scheduler, build_optimizer
+
 set_seed(1)
 
 
+@moxing_wrapper()
 def train():
-    modelarts_process(config)
     """training process"""
-    set_parameters(config)
+    set_parameters()
     if int(os.getenv("DEVICE_ID", "0")):
         context.set_context(device_id=int(os.getenv("DEVICE_ID")))
 
@@ -58,8 +57,6 @@ def train():
             device_num=config.group_size,
             gradients_mean=True,
         )
-
-    print(f"load train data from {config.data_path}; \n load test data from {config.eval_data_path}")
     # dataloader
     de_dataset = classification_dataset(
         config.data_path,
@@ -90,20 +87,29 @@ def train():
     # network
     config.logger.important_info("start create network")
 
-    print(f"build network {config.model_name}")
     # get network and init
-    network = build_network(config.model_name, config.num_classes)
+    network = build_network(config.model_name)
 
     load_pretrain_model(config.checkpoint_file_path, network, config)
 
     # lr scheduler
-    lr = build_lr_scheduler(config)
+    lr = get_lr(config)
 
     # optimizer
-    opt = build_optimizer(config, lr, network)
+    opt = Momentum(
+        params=get_finetune_param_groups(network, config),
+        learning_rate=Tensor(lr),
+        momentum=config.momentum,
+        weight_decay=config.weight_decay,
+        loss_scale=config.loss_scale,
+    )
 
     # loss
-    loss = build_loss(config=config)
+    if not config.label_smooth:
+        config.label_smooth_factor = 0.0
+    loss = CrossEntropy(
+        smooth_factor=config.label_smooth_factor, num_classes=config.num_classes
+    )
 
     if config.is_dynamic_loss_scale == 1:
         loss_scale_manager = DynamicLossScaleManager(
@@ -120,7 +126,7 @@ def train():
         optimizer=opt,
         loss_scale_manager=loss_scale_manager,
         metrics={"top_1_accuracy", "top_5_accuracy"},
-        amp_level="O2",# GPU O2 Ascend O3
+        amp_level="O2",
     )
 
     # checkpoint save
@@ -158,15 +164,9 @@ def train():
         )
         callbacks.append(ckpt_cb)
 
-    print("traininng begin .......")
     model.train(
         config.max_epoch, de_dataset, callbacks=callbacks, dataset_sink_mode=True
     )
-
-    if config.enable_modelarts:
-        import moxing as mox 
-        if config.device_id == 0:
-            mox.file.copy_parallel(config.outputs_dir, config.train_url)
 
 
 if __name__ == "__main__":

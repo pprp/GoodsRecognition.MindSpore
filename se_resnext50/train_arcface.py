@@ -41,6 +41,7 @@ from src.utils.utils import set_parameters, ProgressMonitor, modelarts_process
 from src.utils.var_init import load_pretrain_model
 from src.utils.controller import build_lr_scheduler, build_optimizer
 set_seed(1)
+from src.losses.arcface import MyNetWithLoss 
 
 
 def train():
@@ -91,8 +92,11 @@ def train():
     config.logger.important_info("start create network")
 
     print(f"build network {config.model_name}")
+    
     # get network and init
     network = build_network(config.model_name, config.num_classes)
+
+    net = MyNetWithLoss(network, config)
 
     load_pretrain_model(config.checkpoint_file_path, network, config)
 
@@ -115,7 +119,7 @@ def train():
         )
 
     model = Model(
-        network,
+        net,
         loss_fn=loss,
         optimizer=opt,
         loss_scale_manager=loss_scale_manager,

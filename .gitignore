@@ -17,6 +17,8 @@ mindspore/lite/java/java/gradlew.bat
 mindspore/lite/java/java/app/build
 mindspore/lite/java/java/app/libs
 
+# *.png 
+
 # flatbuffer
 mindspore/lite/tools/converter/parser/tflite/schema_generated.h
 mindspore/lite/tools/converter/parser/caffe/caffe.pb.cc
@@ -107,4 +109,10 @@ mindspore/lite/test/do_test/
 
 # lite opencl compile file
 *.cl.inc
-*.log
+*.log 
+*.somas_meta
+*.meta
+*.json 
+*.out
+CCFB*
+logs/*

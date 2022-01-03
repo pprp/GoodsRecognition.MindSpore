@@ -22,6 +22,7 @@ import mindspore.dataset as de
 import mindspore.dataset.transforms.c_transforms as C
 import mindspore.dataset.vision.c_transforms as V_C
 from src.utils.sampler import DistributedSampler
+from mindspore.dataset.vision.py_transforms import Cutout, RandomErasing
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -54,17 +55,25 @@ class TxtDataset():
         return len(self.imgs)
 
 
-def classification_dataset(data_dir, image_size, per_batch_size, max_epoch, rank, group_size,
-                           mode='train',
-                           input_mode='folder',
-                           root='',
-                           num_parallel_workers=None,
-                           shuffle=None,
-                           sampler=None,
-                           class_indexing=None,
-                           drop_remainder=True,
-                           transform=None,
-                           target_transform=None):
+def classification_dataset(
+    data_dir,
+    image_size,
+    per_batch_size,
+    max_epoch,
+    rank,
+    group_size,
+    mode="train",
+    input_mode="folder",
+    root="",
+    num_parallel_workers=8,
+    shuffle=None,
+    sampler=None,
+    class_indexing=None,
+    drop_remainder=True,
+    transform=None,
+    target_transform=None,
+    config=None,
+):
     """
     A function that returns a dataset for classification. The mode of input dataset could be "folder" or "txt".
     If it is "folder", all images within one folder have the same label. If it is "txt", all paths of images
@@ -107,25 +116,35 @@ def classification_dataset(data_dir, image_size, per_batch_size, max_epoch, rank
         >>>                               input_mode="txt", root=images_dir)
     """
 
-    mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+    mean = [0.5 * 255, 0.5 * 255, 0.5 * 255]
     std = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
     if transform is None:
-        if mode == 'train':
+        if mode == "train":
             transform_img = [
-                V_C.RandomCropDecodeResize(image_size, scale=(0.08, 1.0), ratio=(0.75, 1.333)),
+                V_C.RandomCropDecodeResize(
+                    image_size, scale=(0.08, 1.0), ratio=(0.75, 1.333)
+                ),
                 V_C.RandomHorizontalFlip(prob=0.5),
-                V_C.RandomColorAdjust(brightness=0.4, contrast=0.4, saturation=0.4),
+                V_C.RandomColorAdjust(
+                    brightness=0.4, contrast=0.4, saturation=0.4),
                 V_C.Normalize(mean=mean, std=std),
-                V_C.HWC2CHW()
+                V_C.HWC2CHW(),
             ]
+
+            if config is not None:
+                if config.cutout:
+                    transform_img.append(Cutout(config.cutout_length))
+                if config.random_erase:
+                    transform_img.append(RandomErasing())
         else:
             transform_img = [
                 V_C.Decode(),
-                V_C.Resize((256, 256)),
+                # V_C.Resize((256, 256)),
+                Resize_with_Ratio(),
                 V_C.CenterCrop(image_size),
                 V_C.Normalize(mean=mean, std=std),
-                V_C.HWC2CHW()
+                V_C.HWC2CHW(),
             ]
     else:
         transform_img = transform
@@ -135,24 +154,61 @@ def classification_dataset(data_dir, image_size, per_batch_size, max_epoch, rank
     else:
         transform_label = target_transform
 
-    if input_mode == 'folder':
-        de_dataset = de.ImageFolderDataset(data_dir, num_parallel_workers=num_parallel_workers,
-                                           shuffle=shuffle, sampler=sampler, class_indexing=class_indexing,
-                                           num_shards=group_size, shard_id=rank)
+    if input_mode == "folder":
+        de_dataset = de.ImageFolderDataset(
+            data_dir,
+            num_parallel_workers=num_parallel_workers,
+            shuffle=shuffle,
+            sampler=sampler,
+            class_indexing=class_indexing,
+            num_shards=group_size,
+            shard_id=rank,
+        )
     else:
         dataset = TxtDataset(root, data_dir)
-        sampler = DistributedSampler(dataset, rank, group_size, shuffle=shuffle)
-        de_dataset = de.GeneratorDataset(dataset, ["image", "label"], sampler=sampler)
+        sampler = DistributedSampler(
+            dataset, rank, group_size, shuffle=shuffle)
+        de_dataset = de.GeneratorDataset(
+            dataset, ["image", "label"], sampler=sampler)
 
-    de_dataset = de_dataset.map(operations=transform_img, input_columns="image",
-                                num_parallel_workers=num_parallel_workers)
-    de_dataset = de_dataset.map(operations=transform_label, input_columns="label",
-                                num_parallel_workers=num_parallel_workers)
+    de_dataset = de_dataset.map(
+        operations=transform_img,
+        input_columns="image",
+        num_parallel_workers=num_parallel_workers,
+    )
+    de_dataset = de_dataset.map(
+        operations=transform_label,
+        input_columns="label",
+        num_parallel_workers=num_parallel_workers,
+    )
 
     columns_to_project = ["image", "label"]
     de_dataset = de_dataset.project(columns=columns_to_project)
 
-    de_dataset = de_dataset.batch(per_batch_size, drop_remainder=drop_remainder)
+    de_dataset = de_dataset.batch(
+        per_batch_size, drop_remainder=drop_remainder)
     de_dataset = de_dataset.repeat(max_epoch)
 
     return de_dataset
+
+
+class Resize_with_Ratio(object):
+    def __init__(self, size, interpolation=Image.BILINEAR):
+        self.size = size
+        self.interpolation = interpolation
+
+    def __call__(self, img):
+        # padding
+        ratio = self.size[0] / self.size[1]
+        w, h = img.size
+        if w / h < ratio:
+            t = int(h * ratio)
+            w_padding = (t-w) // 2
+            img = img.crop((-w_padding, 0, w+w_padding, h))
+        else:
+            t = int(w/ratio)
+            h_padding = (t-h) // 2
+            img = img.crop((0, -h_padding, w, h+h_padding))
+
+        img = img.resize(self.size, self.interpolation)
+        return img

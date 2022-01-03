@@ -1,57 +1,80 @@
 # Builtin Configurations(DO NOT CHANGE THESE CONFIGURATIONS unless you know exactly what you are doing)
-enable_modelarts: False
-network: "se_resnext50"
-
+enable_modelarts: False 
+model_name: "se_resnext50"
 # Url for modelarts
 data_url: ""
 train_url: ""
 checkpoint_url: ""
 # Path for local
 run_distribute: False
-enable_profiling: False
-data_path: "/home/niu/data/all/train"
-# "/home/niu/data/all/train" for train
-output_path: "./train_log_ckpt"
-load_path: "./checkpoint_path/"
+enable_profiling: True
+data_path: "/HOME/scz0088/run/all/train"
+eval_data_path: "/HOME/scz0088/run/all/test"
+output_path: "./exps"
+load_path: "./exps/checkpoints/"
 device_target: "GPU"
-checkpoint_path: "./checkpoint/"
-checkpoint_file_path: "/home/niu/project/MindsporeGoodsRecognition/se_resnext50/train/2021-10-31_time_14_47_27/ckpt_0/0-12_711.ckpt"
+# when modelarts is True device_target="Ascend" set O3 for Ascend and set O2 for GPU
+checkpoint_path: "./exps/checkpoints/"
+checkpoint_file_path: ""
+# "./exps/2021-11-11_time_22_45_19/ckpt_0_model_se_resnext50/0_model_name_se_resnext50-75_2672.ckpt"
+# 如果checkpoint_file_path是一个目录，那么会得到其中权重列表。
+# 如果其是一个以ckpt结尾的文件，那么直接将改权重文件添加到权重列表
 
+epochs_to_eval: 5
 # ==============================================================================
+# Data Augmentation
+cutout: True
+cutout_length: 14
+auto_augment: False
+auto_augment_config: rand-m9-mstd0.5-inc1
+interpolation: bicubic
+random_erase: False
+random_erase_prob: 0.5
+random_erase_sl: 0.02
+random_erase_sh: 0.4
+random_erase_r: 0.3
+
 # Training options
-image_size: [128, 128]
-num_classes: 2390
-batch_size: 1024
+image_size: [224,224]
+num_classes: 2388 
+batch_size: 128
 
-# learning rate scheduler
-lr: 0.2
-lr_scheduler: "cosine_annealing"
-lr_epochs:
-  [30,60,90,120]
-lr_gamma: 0.1
-eta_min: 0
-T_max: 150
-max_epoch: 150
-warmup_epochs: 1
-
-# other hyperparameter
-weight_decay: 0.0001
-momentum: 0.9
+# Loss type ce ls fl af
+loss_type: 'ls'
 is_dynamic_loss_scale: 0
-loss_scale: 1024
+# label smooth
 label_smooth: 1
 label_smooth_factor: 0.1
 per_batch_size: 128
+# focal loss
+afa: 2
+beta: 4
 
-# save ckpt controller
+# scheduler: multistep, exponential, cosine_annealing, cosine_annealing_V2, cosine_annealing_sample
+lr: 0.05
+lr_scheduler: "cosine_annealing"
+lr_epochs: [5,10,15]
+lr_gamma: 0.1
+eta_min: 0.000001
+T_max: 75
+max_epoch: 75
+warmup_epochs: 0
+
+# optimizer: adam, sgd, else momentum
+optimizer: "sgd"
+momentum: 0.9
+weight_decay: 0.0001
+loss_scale: 1024
+
 ckpt_interval: 5
 ckpt_save_max: 5
 is_save_on_master: 1
-rank_save_ckpt_flag: 0
-outputs_dir: ""
-log_path: "./output_log"
+rank_save_ckpt_flag: 1
+outputs_dir: "./exps/checkpoints"
+log_path: "./exps/output_log"
 
 # Export options
+is_training: True
 device_id: 0
 width: 224
 height: 224
@@ -67,7 +90,7 @@ data_url: "Dataset url for obs"
 train_url: "Training output url for obs"
 checkpoint_url: "The location of checkpoint for obs"
 data_path: "Dataset path for local"
-output_path: "Training output path for local; save ckpt and log"
+output_path: "Training output path for local"
 load_path: "The location of checkpoint for obs"
 device_target: "Target device type, available: [Ascend, CPU]"
 enable_profiling: "Whether enable profiling while training, default: False"
